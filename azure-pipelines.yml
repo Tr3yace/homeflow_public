@@ -1,0 +1,83 @@
+trigger:
+  branches:
+    include:
+    - refs/heads/development
+
+name: $(date:yyyyMMdd)$(rev:.r)
+
+variables:
+  BuildConfiguration: 'Release' # Explicitly setting this prevents evaluation errors
+
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    vmImage: windows-latest
+  steps:
+  - checkout: self
+    fetchDepth: 1
+
+  # Explicitly require .NET 10 SDK to match your project targets
+  - task: UseDotNet@2
+    displayName: 'Use .NET SDK 10'
+    inputs:
+      packageType: 'sdk'
+      version: '10.x'
+
+  # Restore packages using the .NET CLI (natively supports .slnx)
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet restore'
+    inputs:
+      command: 'restore'
+      projects: '**/*.slnx'
+      
+  # 1. Publish web (no zip yet) into a temp package folder.
+  # The worker is not deployed: F1 has no Always On, so bin data is refreshed
+  # on demand by the API (IBinRefreshService) instead of a continuous WebJob.
+  # ReadyToRun precompiles the app to cut cold-start time; F1 only runs 32-bit,
+  # so the runtime identifier is win-x86 (framework-dependent, uses the App Service runtime).
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet publish (Web)'
+    inputs:
+      command: 'publish'
+      projects: 'HomeFlow.Web.UI/HomeFlow.Web.UI.csproj'
+      arguments: '--configuration $(BuildConfiguration) --runtime win-x86 --self-contained false -p:PublishReadyToRun=true --output "$(Build.BinariesDirectory)\package"'
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+
+  # 2. Zip the published site as the deployable package
+  - task: ArchiveFiles@2
+    displayName: 'Zip package'
+    inputs:
+      rootFolderOrFile: '$(Build.BinariesDirectory)\package'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)\HomeFlow.zip'
+      replaceExistingArchive: true
+  - task: VSTest@2
+    displayName: VsTest - testAssemblies
+    enabled: False
+    inputs:
+      testAssemblyVer2: >-
+        **\$(BuildConfiguration)\*test*.dll
+
+        !**\obj\**
+      platform: $(BuildPlatform)
+      configuration: $(BuildConfiguration)
+
+  - task: PublishSymbols@2
+    displayName: Publish symbols path
+    continueOnError: True
+    inputs:
+      SearchPattern: '**\bin\**\*.pdb'
+      PublishSymbols: false
+      SymbolServerType: TeamServices
+
+  # Publish the generated .zip package as a build artifact drop
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    inputs:
+      PathtoPublish: '$(build.artifactstagingdirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'

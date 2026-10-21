@@ -1,0 +1,50 @@
+﻿@page
+@model HomeFlow.Web.UI.Pages.Dashboard.IndexModel
+
+@{
+    ViewData["Title"] = "HomeFlow Dashboard";
+}
+
+<h1>HomeFlow Dashboard</h1>
+
+@if (!Model.Bins.Any())
+{
+    <p>No bin collection data found.</p>
+}
+else
+{
+    <div class="dashboard">
+
+        @foreach (var bin in Model.Bins)
+        {
+            <article class="bin-card">
+
+                <div class="bin-icon @bin.CssClass"></div>
+
+                <h3>@bin.ServiceName</h3>
+
+                <p>
+                    <strong>Next Collection</strong><br />
+                    @bin.NextCollectionDisplay
+                </p>
+
+                <p>
+                    <strong>Status</strong><br />
+                    @bin.CollectionStatus
+                </p>
+
+                <p>
+                    <strong>Collection Day</strong><br />
+                    @bin.DayOfWeek
+                </p>
+
+                <div class="updated">
+                    Updated:
+                    @bin.LastUpdatedDisplay
+                </div>
+
+            </article>
+        }
+
+    </div>
+}

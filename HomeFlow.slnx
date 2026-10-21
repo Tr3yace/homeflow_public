@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="HomeFlow.Data/HomeFlow.Data.csproj" />
+  <Project Path="HomeFlow.Service/HomeFlow.Service.csproj" />
+  <Project Path="HomeFlow.Web.UI/HomeFlow.Web.UI.csproj" />
+  <Project Path="HomeFlow.Worker/Homeflow.Worker.csproj" Id="1b5251cd-1c7c-40e5-a671-7aa549ca874b" DisplayName="HomeFlow.Worker" />
+</Solution>
